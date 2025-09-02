@@ -106,7 +106,10 @@ export const CustomUrlEditor: FC<CustomUrlEditorProps> = ({
   useEffect(() => {
     async function getQueryEntityDropdownOptions() {
       let dataViewToUse: DataView | undefined;
-      const dataViewId = customUrl?.kibanaSettings?.discoverIndexPatternId;
+      const dataViewId =
+        customUrl?.type === URL_TYPE.KIBANA_DISCOVER
+          ? customUrl?.kibanaSettings?.discoverIndexPatternId
+          : undefined; // Dashboard URLs don't have a single data view
 
       try {
         dataViewToUse = await dataViews.get(dataViewId ?? '');
@@ -132,7 +135,13 @@ export const CustomUrlEditor: FC<CustomUrlEditorProps> = ({
     if (job !== undefined) {
       getQueryEntityDropdownOptions();
     }
-  }, [dataViews, job, customUrl?.kibanaSettings?.discoverIndexPatternId, isPartialDFAJob]);
+  }, [
+    dataViews,
+    job,
+    customUrl?.kibanaSettings?.discoverIndexPatternId,
+    isPartialDFAJob,
+    customUrl?.type,
+  ]);
 
   useEffect(() => {
     if (addIntervalTimerange === false) {

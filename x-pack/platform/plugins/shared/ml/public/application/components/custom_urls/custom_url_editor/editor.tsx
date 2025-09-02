@@ -106,19 +106,23 @@ export const CustomUrlEditor: FC<CustomUrlEditorProps> = ({
   useEffect(() => {
     async function getQueryEntityDropdownOptions() {
       let dataViewToUse: DataView | undefined;
+
       const dataViewId =
         customUrl?.type === URL_TYPE.KIBANA_DISCOVER
           ? customUrl?.kibanaSettings?.discoverIndexPatternId
           : undefined; // Dashboard URLs don't have a single data view
 
       try {
-        dataViewToUse = await dataViews.get(dataViewId ?? '');
+        dataViewToUse = dataViewId ? await dataViews.get(dataViewId) : undefined;
       } catch (e) {
         dataViewToUse = undefined;
       }
-      if (dataViewToUse && dataViewToUse.timeFieldName) {
+
+      // Show time range configuration for dashboards by default
+      if (customUrl?.type === URL_TYPE.KIBANA_DASHBOARD) {
         setHasTimefield(true);
-      }
+      } else setHasTimefield(dataViewToUse?.timeFieldName !== undefined);
+
       const dropDownOptions = await getDropDownOptions(
         isFirst.current,
         job,

@@ -19,6 +19,9 @@ import { i18n } from '@kbn/i18n';
 import { AI_ASSISTANT_APP_ID } from '@kbn/deeplinks-observability';
 import type { AIAssistantAppService } from '@kbn/ai-assistant';
 import { createAppService } from '@kbn/ai-assistant';
+import { AIChatExperience } from '@kbn/ai-assistant-common';
+import { AI_ASSISTANT_CHAT_EXPERIENCE_TYPE } from '@kbn/management-settings-ids';
+import { observabilityAppId } from '@kbn/observability-shared-plugin/common';
 import { withSuspense } from '@kbn/shared-ux-utility';
 import type {
   ObservabilityAIAssistantAppPluginSetupDependencies,
@@ -81,6 +84,17 @@ export class ObservabilityAIAssistantAppPlugin
             [CoreStart, ObservabilityAIAssistantAppPluginStartDependencies, unknown]
           >,
         ]);
+
+        // Restrict direct access when Chat Experience is set to AI Agents
+        const chatExperience = coreStart.settings.client.get<AIChatExperience>(
+          AI_ASSISTANT_CHAT_EXPERIENCE_TYPE,
+          AIChatExperience.Classic
+        );
+        if (chatExperience === AIChatExperience.Agents) {
+          // Redirect to Observability overview and do not mount the app
+          coreStart.application.navigateToApp(observabilityAppId, { path: '/' });
+          return () => {};
+        }
 
         ReactDOM.render(
           <Application

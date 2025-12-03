@@ -8,7 +8,9 @@
 import type { CoreSetup, CoreStart, Plugin } from '@kbn/core/public';
 import { i18n } from '@kbn/i18n';
 import { appCategories, appIds } from '@kbn/management-cards-navigation';
-import { map, of } from 'rxjs';
+import { combineLatest, map, of } from 'rxjs';
+import { AIChatExperience } from '@kbn/ai-assistant-common';
+import { AI_ASSISTANT_CHAT_EXPERIENCE_TYPE } from '@kbn/management-settings-ids';
 import { createNavigationTree } from './navigation_tree';
 import type {
   ServerlessObservabilityPublicSetup,
@@ -41,14 +43,26 @@ export class ServerlessObservabilityPlugin
     setupDeps: ServerlessObservabilityPublicStartDependencies
   ): ServerlessObservabilityPublicStart {
     const { serverless, management, security } = setupDeps;
-    const navigationTree$ = (
-      setupDeps.streams?.navigationStatus$ || of({ status: 'disabled' })
-    ).pipe(
-      map(({ status }) => {
+
+    // Observe chat experience setting to determine if AI Assistant link should be shown
+    const chatExperience$ = core.settings.client.get$<AIChatExperience>(
+      AI_ASSISTANT_CHAT_EXPERIENCE_TYPE,
+      AIChatExperience.Classic
+    );
+
+    const navigationTree$ = combineLatest([
+      setupDeps.streams?.navigationStatus$ || of({ status: 'disabled' }),
+      chatExperience$,
+    ]).pipe(
+      map(([{ status }, chatExperience]) => {
+        // Hide AI Assistant link when AI Agents is selected
+        const showAiAssistant = chatExperience !== AIChatExperience.Agents;
+
         return createNavigationTree({
           streamsAvailable: status === 'enabled',
           overviewAvailable: core.pricing.isFeatureAvailable('observability:complete_overview'),
           isCasesAvailable: Boolean(setupDeps.cases),
+          showAiAssistant,
         });
       })
     );

@@ -5,11 +5,14 @@
  * 2.0.
  */
 import type { NavigationTreeDefinition } from '@kbn/core-chrome-browser';
+import type { CoreStart } from '@kbn/core/public';
 import { i18n } from '@kbn/i18n';
 import type { AddSolutionNavigationArg } from '@kbn/navigation-plugin/public';
 import { STACK_MANAGEMENT_NAV_ID, DATA_MANAGEMENT_NAV_ID } from '@kbn/deeplinks-management';
 import { lazy } from 'react';
-import { map, of } from 'rxjs';
+import { combineLatest, map, of } from 'rxjs';
+import { AIChatExperience } from '@kbn/ai-assistant-common';
+import { AI_ASSISTANT_CHAT_EXPERIENCE_TYPE } from '@kbn/management-settings-ids';
 import type { ObservabilityPublicPluginsStart } from './plugin';
 const LazyIconBriefcase = lazy(() =>
   import('@kbn/observability-nav-icons').then(({ iconBriefcase }) => ({ default: iconBriefcase }))
@@ -36,7 +39,13 @@ const title = i18n.translate(
 );
 const icon = 'logoObservability';
 
-function createNavTree({ streamsAvailable }: { streamsAvailable?: boolean }) {
+function createNavTree({
+  streamsAvailable,
+  showAiAssistant = true,
+}: {
+  streamsAvailable?: boolean;
+  showAiAssistant?: boolean;
+}) {
   const navTree: NavigationTreeDefinition = {
     body: [
       {
@@ -242,14 +251,18 @@ function createNavTree({ streamsAvailable }: { streamsAvailable?: boolean }) {
           },
         ],
       },
-      {
-        id: 'aiAssistantContainer',
-        title: i18n.translate('xpack.observability.obltNav.aiAssistant', {
-          defaultMessage: 'AI Assistant',
-        }),
-        icon: 'sparkles',
-        link: 'observabilityAIAssistant',
-      },
+      ...(showAiAssistant
+        ? [
+            {
+              id: 'aiAssistantContainer',
+              title: i18n.translate('xpack.observability.obltNav.aiAssistant', {
+                defaultMessage: 'AI Assistant',
+              }),
+              icon: 'sparkles',
+              link: 'observabilityAIAssistant' as const,
+            },
+          ]
+        : []),
       {
         id: 'machine_learning-landing',
         title: i18n.translate('xpack.observability.obltNav.machineLearning', {
@@ -582,14 +595,34 @@ function createNavTree({ streamsAvailable }: { streamsAvailable?: boolean }) {
 }
 
 export const createDefinition = (
-  pluginsStart: ObservabilityPublicPluginsStart
-): AddSolutionNavigationArg => ({
-  id: 'oblt',
-  title,
-  icon: 'logoObservability',
-  homePage: 'observabilityOnboarding',
-  navigationTree$: (
-    pluginsStart.streams?.navigationStatus$ || of({ status: 'disabled' as const })
-  ).pipe(map(({ status }) => createNavTree({ streamsAvailable: status === 'enabled' }))),
-  dataTestSubj: 'observabilitySideNav',
-});
+  pluginsStart: ObservabilityPublicPluginsStart,
+  coreStart: CoreStart
+): AddSolutionNavigationArg => {
+  // Observe chat experience setting
+  const chatExperience$ = coreStart.settings.client.get$<AIChatExperience>(
+    AI_ASSISTANT_CHAT_EXPERIENCE_TYPE,
+    AIChatExperience.Classic
+  );
+
+  return {
+    id: 'oblt',
+    title,
+    icon: 'logoObservability',
+    homePage: 'observabilityOnboarding',
+    navigationTree$: combineLatest([
+      pluginsStart.streams?.navigationStatus$ || of({ status: 'disabled' as const }),
+      chatExperience$,
+    ]).pipe(
+      map(([{ status }, chatExperience]) => {
+        // Hide AI Assistant link when AI Agents is selected
+        const showAiAssistant = chatExperience !== AIChatExperience.Agents;
+
+        return createNavTree({
+          streamsAvailable: status === 'enabled',
+          showAiAssistant,
+        });
+      })
+    ),
+    dataTestSubj: 'observabilitySideNav',
+  };
+};

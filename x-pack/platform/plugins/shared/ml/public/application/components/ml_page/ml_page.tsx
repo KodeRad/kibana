@@ -310,6 +310,9 @@ export const MlPage: FC<{ pageDeps: PageDependencies; entryPoint?: string }> = R
                     }),
                     icon: 'machineLearningApp',
                     items: sideNavItems,
+                    headingProps: {
+                      element: 'h1',
+                    },
                   }
                 : undefined
             }

@@ -54,7 +54,7 @@ const SecondaryMenuBase = forwardRef<HTMLDivElement, SecondaryMenuProps>(
       <div ref={ref}>
         <EuiTitle css={titleStyles} size="xs">
           <div css={titleWithBadgeStyles}>
-            <h4>{title}</h4>
+            <h1>{title}</h1>
             {badgeType && <BetaBadge type={badgeType} alignment="text-bottom" />}
           </div>
         </EuiTitle>

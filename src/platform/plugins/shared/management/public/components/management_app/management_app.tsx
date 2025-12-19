@@ -96,6 +96,9 @@ export const ManagementApp = ({ dependencies, history, appBasePath }: Management
         }),
         icon: 'managementApp',
         'data-test-subj': 'mgtSideBarNav',
+        headingProps: {
+          element: 'h1',
+        },
         items: managementSidebarNav({
           selectedId,
           sections,
